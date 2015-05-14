@@ -45,7 +45,8 @@ global model1;
     xTrain = [xPostrain, xNegtrain]';
     yTrain = [ones(size(xPostrain,2), 1); repmat(-1,size(xPostrain,2), 1)];
     bestDegree = cross_kfold(xTrain, yTrain, 15);
-    model1 = svmtrain(xTrain, yTrain, 'BoxConstraint',1e-1, 'Kernel_Function','polynomial','Polyorder', bestDegree);
+    options = optimset('maxiter',10000000);
+    model1 = svmtrain(xTrain, yTrain, 'BoxConstraint',1e-1, 'Kernel_Function','polynomial','Polyorder', bestDegree, 'options',options);
     targetFeature = featureExtraction(cell2mat(drug_feature(lastFeatureIndexDrug, Interactions_Drug_Target(:,1)))',...
                                       cell2mat(target_feature(lastFeatureIndexTarget,:))',...
                                       target_finalDimention);
