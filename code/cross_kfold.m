@@ -1,6 +1,6 @@
 function bestDegree = cross_kfold(trainX,trainY,n_fold)
 
-degrees = [2, 4, 6, 8];
+degrees = [2, 3, 4, 5];
 size_degree = numel(degrees);
 cv_error = zeros(1, size_degree);
 
@@ -22,7 +22,6 @@ for i=1:size_degree
     [samplestest, features] = size(cv_testX);
     cv_testX = [ones(samplestest, 1), cv_testX];
     options = optimset('maxiter',10000000);
-    disp(degrees(i));
     svmModel = svmtrain(cv_trainX, cv_trainY, 'BoxConstraint',1e-1, 'Kernel_Function','polynomial','Polyorder',degrees(i),'options',options);
     newvalue= svmclassify(svmModel, cv_testX);
     %     cv_err_arr(fold)=sqrt(mean((newvalue-cv_testY).^2));
