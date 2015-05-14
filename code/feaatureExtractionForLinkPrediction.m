@@ -1,4 +1,4 @@
-load('C:\Users\Administrator\Desktop\Link Prediction Problem\data\Perlman_Data');
+load('Perlman_Data');
 %%%%%%%  drug cmdsScale, fining min dim for reduction
 Y_DrugSim_ATCHierDrugsCommonSimilarityMat = cmdscale(DrugSim_ATCHierDrugsCommonSimilarityMat);
 % Y_DrugSim_chemicalDrugsCommonSimilarityMat = cmdscale(DrugSim_chemicalDrugsCommonSimilarityMat);
