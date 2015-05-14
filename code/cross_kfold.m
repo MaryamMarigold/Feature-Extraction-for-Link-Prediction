@@ -1,6 +1,6 @@
 function bestDegree = cross_kfold(trainX,trainY,n_fold)
 
-degrees = [2, 3, 4, 5, 6, 7, 8, 9, 10];
+degrees = [2, 4, 6, 8];
 size_degree = numel(degrees);
 cv_error = zeros(1, size_degree);
 
