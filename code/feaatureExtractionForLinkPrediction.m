@@ -1,41 +1,43 @@
-load('Perlman_Data');
-%%%%%%%  drug cmdsScale, fining min dim for reduction
-Y_DrugSim_ATCHierDrugsCommonSimilarityMat = cmdscale(DrugSim_ATCHierDrugsCommonSimilarityMat);
-% Y_DrugSim_chemicalDrugsCommonSimilarityMat = cmdscale(DrugSim_chemicalDrugsCommonSimilarityMat);
-% Y_DrugSim_ligandJaccardDrugsCommonSimilarityMat = cmdscale(DrugSim_ligandJaccardDrugsCommonSimilarityMat);
-% Y_DrugSim_newCMapJaccardDrugsCommonSimilarityMat = cmdscale(DrugSim_newCMapJaccardDrugsCommonSimilarityMat);
-% Y_DrugSim_pSideEffectDrugsCommonSimilarityMat = cmdscale(DrugSim_pSideEffectDrugsCommonSimilarityMat);
-% drug_dimentionSizes = [size(Y_DrugSim_ATCHierDrugsCommonSimilarityMat, 2),...
-%                      size(Y_DrugSim_ATCHierDrugsCommonSimilarityMat, 2),...
-%                      size(Y_DrugSim_ATCHierDrugsCommonSimilarityMat, 2),...
-%                      size(Y_DrugSim_ATCHierDrugsCommonSimilarityMat, 2),...
-%                      size(Y_DrugSim_ATCHierDrugsCommonSimilarityMat, 2)];
-% drug_finalDimention = max(drug_dimentionSizes);
-drug_finalDimention = size(Y_DrugSim_ATCHierDrugsCommonSimilarityMat, 2);
+load('data\Perlman_Data');
+% %%%%%%%  drug cmdsScale, fining min dim for reduction
+% %  Y_DrugSim_ATCHierDrugsCommonSimilarityMat = cmdscale(DrugSim_ATCHierDrugsCommonSimilarityMat);
+% % Y_DrugSim_chemicalDrugsCommonSimilarityMat = cmdscale(DrugSim_chemicalDrugsCommonSimilarityMat);
+% % Y_DrugSim_ligandJaccardDrugsCommonSimilarityMat = cmdscale(DrugSim_ligandJaccardDrugsCommonSimilarityMat);
+% % Y_DrugSim_newCMapJaccardDrugsCommonSimilarityMat = cmdscale(DrugSim_newCMapJaccardDrugsCommonSimilarityMat);
+% % Y_DrugSim_pSideEffectDrugsCommonSimilarityMat = cmdscale(DrugSim_pSideEffectDrugsCommonSimilarityMat);
+% % drug_dimentionSizes = [size(Y_DrugSim_ATCHierDrugsCommonSimilarityMat, 2),...
+% %                      size(Y_DrugSim_ATCHierDrugsCommonSimilarityMat, 2),...
+% %                      size(Y_DrugSim_ATCHierDrugsCommonSimilarityMat, 2),...
+% %                      size(Y_DrugSim_ATCHierDrugsCommonSimilarityMat, 2),...
+% %                      size(Y_DrugSim_ATCHierDrugsCommonSimilarityMat, 2)];
+% % drug_finalDimention = max(drug_dimentionSizes);
+% % drug_finalDimention = size(Y_DrugSim_ATCHierDrugsCommonSimilarityMat, 2);
+drug_finalDimention = 10;
 drug_feature(1, :) = num2cell((mdscale(DrugSim_ATCHierDrugsCommonSimilarityMat, drug_finalDimention, 'criterion','metricstress'))', [1 size(DrugSim_ATCHierDrugsCommonSimilarityMat, 1)]);
-% drug_feature(2, :) = num2cell((mdscale(DrugSim_chemicalDrugsCommonSimilarityMat, drug_finalDimention, 'criterion','metricstress'))', [1 size(DrugSim_ATCHierDrugsCommonSimilarityMat, 1)]);
-% drug_feature(3, :) = num2cell((mdscale(DrugSim_ligandJaccardDrugsCommonSimilarityMat, drug_finalDimention, 'criterion','metricstress'))', [1 drug_finalDimention]);
-% drug_feature(4,:) = num2cell((mdscale(DrugSim_newCMapJaccardDrugsCommonSimilarityMat, drug_finalDimention, 'criterion','metricstress'))', [1 size(DrugSim_ATCHierDrugsCommonSimilarityMat, 1)]);
-% drug_feature(5, :) = num2cell((mdscale(DrugSim_pSideEffectDrugsCommonSimilarityMat, drug_finalDimention, 'criterion','metricstress'))', [1 size(DrugSim_ATCHierDrugsCommonSimilarityMat, 1)]);
-%%%%%%%%%%%   target smdScale, fining min dim for reduction
-Y_TargetSim_GOTargetsCommonSimilarityMat = cmdscale(TargetSim_GOTargetsCommonSimilarityMat);
-% Y_TargetSim_distTargetsCommonSimilarityMat = cmdscale(TargetSim_distTargetsCommonSimilarityMat);
-% Y_TargetSim_seqTargetsCommonSimilarityMat = cmdscale(TargetSim_seqTargetsCommonSimilarityMat);
-% target_dimentionSizes = [size(Y_TargetSim_GOTargetsCommonSimilarityMat, 2),...
-%                      size(Y_TargetSim_distTargetsCommonSimilarityMat, 2),...
-%                      size(Y_TargetSim_seqTargetsCommonSimilarityMat, 2)];
-% target_finalDimention = max(target_dimentionSizes);
-target_finalDimention = size(Y_TargetSim_GOTargetsCommonSimilarityMat, 2);
-%%%%%%%%%%%%   target mdsScale
+drug_feature(2, :) = num2cell((mdscale(DrugSim_chemicalDrugsCommonSimilarityMat, drug_finalDimention, 'criterion','metricstress'))', [1 size(DrugSim_ATCHierDrugsCommonSimilarityMat, 1)]);
+drug_feature(3, :) = num2cell((mdscale(DrugSim_ligandJaccardDrugsCommonSimilarityMat, drug_finalDimention, 'criterion','metricstress'))', [1 drug_finalDimention]);
+drug_feature(4,:) = num2cell((mdscale(DrugSim_newCMapJaccardDrugsCommonSimilarityMat, drug_finalDimention, 'criterion','metricstress'))', [1 size(DrugSim_ATCHierDrugsCommonSimilarityMat, 1)]);
+drug_feature(5, :) = num2cell((mdscale(DrugSim_pSideEffectDrugsCommonSimilarityMat, drug_finalDimention, 'criterion','metricstress'))', [1 size(DrugSim_ATCHierDrugsCommonSimilarityMat, 1)]);
+% % %%%%%%%%%%   target smdScale, fining min dim for reduction
+% % Y_TargetSim_GOTargetsCommonSimilarityMat = cmdscale(TargetSim_GOTargetsCommonSimilarityMat);
+% % Y_TargetSim_distTargetsCommonSimilarityMat = cmdscale(TargetSim_distTargetsCommonSimilarityMat);
+% % Y_TargetSim_seqTargetsCommonSimilarityMat = cmdscale(TargetSim_seqTargetsCommonSimilarityMat);
+% % target_dimentionSizes = [size(Y_TargetSim_GOTargetsCommonSimilarityMat, 2),...
+% %                      size(Y_TargetSim_distTargetsCommonSimilarityMat, 2),...
+% %                      size(Y_TargetSim_seqTargetsCommonSimilarityMat, 2)];
+% % target_finalDimention = max(target_dimentionSizes);
+% % target_finalDimention = size(Y_TargetSim_GOTargetsCommonSimilarityMat, 2);
+% % %%%%%%%%%%%   target mdsScale
+target_finalDimention = 10;
 target_feature(1, :) = num2cell((mdscale(TargetSim_GOTargetsCommonSimilarityMat, target_finalDimention, 'criterion','metricstress'))', [1 size(TargetSim_GOTargetsCommonSimilarityMat, 1)]);
-% target_feature(2, :) = num2cell((mdscale(TargetSim_distTargetsCommonSimilarityMat, target_finalDimention, 'criterion','metricstress'))', [1 size(TargetSim_GOTargetsCommonSimilarityMat, 1)]);
-% target_feature(3, :) = num2cell((mdscale(TargetSim_seqTargetsCommonSimilarityMat, target_finalDimention, 'criterion','metricstress'))', [1 size(TargetSim_GOTargetsCommonSimilarityMat, 1)]);
-lastFeatureIndexDrug = 1;
-lastFeatureIndexTarget = 1;
-%%%%%%%%%%% create new features
-
+target_feature(2, :) = num2cell((mdscale(TargetSim_distTargetsCommonSimilarityMat, target_finalDimention, 'criterion','metricstress'))', [1 size(TargetSim_GOTargetsCommonSimilarityMat, 1)]);
+target_feature(3, :) = num2cell((mdscale(TargetSim_seqTargetsCommonSimilarityMat, target_finalDimention, 'criterion','metricstress'))', [1 size(TargetSim_GOTargetsCommonSimilarityMat, 1)]);
+lastFeatureIndexDrug = 5;
+lastFeatureIndexTarget = 3;
+% %%%%%%%%%%% create new features
+% 
 global model1;
-% for featureNum = 1 : 3
+for featureNum = 1 : 3
     xPostrain = cell2mat([target_feature(lastFeatureIndexTarget, Interactions_Drug_Target(:,2));...
                                         drug_feature(lastFeatureIndexDrug, Interactions_Drug_Target(:,1))]);
     [rowZerIdx, colZeoIdx] = find(Interactions_Matrix == 0);
@@ -47,14 +49,28 @@ global model1;
     bestDegree = cross_kfold(xTrain, yTrain, 15);
     options = optimset('maxiter',10000000);
     model1 = svmtrain(xTrain, yTrain, 'BoxConstraint',1e-1, 'Kernel_Function','polynomial','Polyorder', bestDegree, 'options',options);
-    targetFeature = featureExtraction(cell2mat(drug_feature(lastFeatureIndexDrug, Interactions_Drug_Target(:,1)))',...
+    drug = [];
+    for j = 1:lastFeatureIndexDrug
+        drug = [drug, drug_feature(j, Interactions_Drug_Target(:,1))];
+    end
+    for j = 1:lastFeatureIndexDrug
+        drug = [drug, drug_feature(j, ZeroIndexes(1:size(xPostrain, 2),1))];
+    end
+    targetFeature = featureExtraction(cell2mat(drug)',...
                                       cell2mat(target_feature(lastFeatureIndexTarget,:))',...
                                       target_finalDimention);
     lastFeatureIndexTarget = lastFeatureIndexTarget+1;
     target_feature(lastFeatureIndexTarget, :) = num2cell(targetFeature', [1 size(targetFeature, 2)]);
-    drugFeature = featureExtraction(cell2mat(target_feature(lastFeatureIndexTarget, Interactions_Drug_Target(:,2)))',...
+    target = [];
+    for j = 1:lastFeatureIndexTarget
+        target = [target, target_feature(j, Interactions_Drug_Target(:,2))];
+    end
+    for j = 1:lastFeatureIndexTarget
+        target = [target, target_feature(j, ZeroIndexes(1:size(xPostrain, 2),2))];
+    end
+    drugFeature = featureExtraction(cell2mat(target)',...
                                     cell2mat(drug_feature(lastFeatureIndexDrug,:))',...
                                     drug_finalDimention);
     lastFeatureIndexDrug = lastFeatureIndexDrug+1;
     drug_feature(lastFeatureIndexDrug, :) = num2cell(drugFeature', [1 size(drugFeature, 2)]);
-% end
+end
