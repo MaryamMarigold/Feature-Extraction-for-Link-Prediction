@@ -1,12 +1,17 @@
-function [score] = findScore(data, clusterLists)
+function [labels, decisionvalue] = findScore(data, clusterLists, row)
 global model1;
-sv = model1.SupportVectors;
-alphaHat = model1.Alpha;
-bias = model1.Bias;
-kfun = model1.KernelFunction;
-kfunargs = model1.KernelFunctionArgs;
-for i = 1: size(data, 1)
-    tempData = repmat(data(i, :)', 1, size(clusterLists, 1));
-    score(i, :) = kfun(sv, [clusterLists, tempData], kfunargs{:})'*alphaHat(:) + bias;
+if(row)
+    for i = 1: size(data, 1)
+        tempData = repmat(data(i, :)', 1, size(clusterLists, 1));
+        newData((i-1)*(size(clusterLists, 1))+1:(i)*(size(clusterLists, 1)), :) = [clusterLists, tempData'];
+    end
+else
+    for i = 1: size(data, 1)
+        tempData = repmat(data(i, :)', 1, size(clusterLists, 1));
+        newData((i-1)*(size(clusterLists, 1))+1:(i)*(size(clusterLists, 1)), :) = [tempData', clusterLists];
+    end
+    
 end
+[labels, ~, decisionvalue] = ...
+    svmpredict(zeros(size(newData, 1), 1), newData, model1);
 end
