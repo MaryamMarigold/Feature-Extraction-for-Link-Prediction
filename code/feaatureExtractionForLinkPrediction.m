@@ -1,7 +1,7 @@
-load('..\data\Perlman_Data');
-load('..\data\New_Interactions');
-addpath('C:\Program Files\MATLAB\R2012b\toolbox\libsvm-3.20\matlab');
-addpath('C:\Program Files\MATLAB\R2012b\toolbox\vlfeat-0.9.20-bin\vlfeat-0.9.20');
+load('../data/Perlman_Data');
+load('../data/New_Interactions');
+addpath('/usr/local/MATLAB/R2014a/toolbox/libsvm-3.20/matlab');
+addpath('/usr/local/MATLAB/R2014a/toolbox/vlfeat-0.9.20-bin/vlfeat-0.9.20');
 %%%%%%%%%%%  drug mdScale
 drug_finalDimention = 10;
 drug_feature(1, :) = num2cell((mdscale(DrugSim_ATCHierDrugsCommonSimilarityMat, drug_finalDimention, 'criterion','metricstress'))', [1 size(DrugSim_ATCHierDrugsCommonSimilarityMat, 1)]);
@@ -24,12 +24,13 @@ num_folds = 10; % No of folds for cross validation
 indices =  PSLFolds(:,3); % Setting the folds to the same one used with PSL
 global predictedInteractionMatrix;
 global model1;
+train_recall = zeros(4, 1); train_precision = zeros(4, 1);test_recall = zeros(4, 1); test_precision = zeros(4, 1);
 for currentFold = 1:num_folds,
     test = ((indices == currentFold) | (indices == -1));
     train = ~test;
     diffSize = size(Interactions_Drug_Target, 1)- size(train, 1);
     if(diffSize < 0)
-        Interactions_Drug_Target_temp = [zeros(abs(diffSize), 2);Interactions_Drug_Target];
+        Interactions_Drug_Target_temp = [Interactions_Drug_Target;zeros(abs(diffSize), 2)];
     else
         train = [train, zeros(diffSize, 1)];
         test = [test, zeros(diffSize, 1)];
@@ -39,7 +40,7 @@ for currentFold = 1:num_folds,
     newInteractions = NewInteractionFolds(find(NewInteractionFolds(:, 3) == currentFold), 1:2);
     diffSize2 = size(newInteractions, 1)- size(train, 1);
     if(diffSize2 < 0)
-        newInteractions_temp = [zeros(abs(diffSize2), 2);newInteractions];
+        newInteractions_temp = [newInteractions;zeros(abs(diffSize2), 2)];
     else
         train = [train, zeros(diffSize2, 1)];
         test = [test, zeros(diffSize2, 1)];
@@ -50,7 +51,7 @@ for currentFold = 1:num_folds,
     [rowZeroIdx, colZeroIdx] = find(Interactions_Matrix == 0);
     diffSize = size(rowZeroIdx, 1)- size(train, 1);
     if(diffSize < 0)
-        zeroIndexes = [zeros(abs(diffSize), 2); [rowZeroIdx, colZeroIdx]];
+        zeroIndexes = [[rowZeroIdx, colZeroIdx];zeros(abs(diffSize), 2)];
     else
         train = [train, zeros(diffSize, 1)];
         test = [test, zeros(diffSize, 1)];
@@ -68,17 +69,20 @@ for currentFold = 1:num_folds,
             zeroIndexNum = min(size(ZeroIndexes, 1), size(xPosTrain, 2)) - size(xNegTrain, 2);
             xNegTrain = [xNegTrain, cell2mat([target_feature(j, ZeroIndexes(1:zeroIndexNum,2));...
                 drug_feature(i, ZeroIndexes(1:zeroIndexNum,1))])];
-            target =  [target, target_feature(j, :)];
         end
     end
+    target =  [target_feature(1, :), target_feature(2, :), target_feature(3, :)];
     zeroIndexNumTest = min(size(test_zeroIndexes, 1), size(xPosTest, 2)) - size(xNegTest, 2);
     for featureNum = 80:-20:20
         predictedInteractionMatrix = zeros(nTargets, nDrugs);
         xTrain = [xPosTrain, xNegTrain]';
         yTrain = [ones(size(xPosTrain,2), 1); repmat(-1,size(xNegTrain,2), 1)];
         xTest = cell2mat(drug_feature(lastFeatureIndexDrug, unique(PSLFolds(find(test == 1), 1))));
-        %     bestDegree = cross_kfold(xTrain, yTrain, 15);
-        model1 = svmtrain(yTrain, xTrain, '-t 0, -h 0');
+        [c, bestDegree] = cross_kfold(xTrain, yTrain, 5);
+         str = sprintfc('-t 0, -h 0, -d %d', bestDegree);
+        str = strcat(str, ' ', sprintfc(', -c %d', c));
+        disp(str);
+        model1 = svmtrain(yTrain, xTrain, str(1, 1));
         targetFeature = featureExtraction(cell2mat(drug)',...
             cell2mat(target_feature(lastFeatureIndexTarget,:))',...
             featureNum, 1, nDrugs);
@@ -92,14 +96,28 @@ for currentFold = 1:num_folds,
         drug_feature(lastFeatureIndexDrug, :) = num2cell(drugFeature', [1 size(drugFeature, 2)]);
         [rows, cols] = find(predictedInteractionMatrix == 1);
         train_prediction = [cols, rows];
-        %%%%testing and reporting test and train calculation
+        %%%%testing
         predictedInteractionMatrixTest = testFeatureExtraction(xTest, cell2mat(target_feature(lastFeatureIndexTarget-1,:))',...
             featureNum, nTargets, nDrugs);
-        [testrows, testcols] = find(predictedInteractionMatrixTest == 1);
-        testPredixtion = [testcols, testrows];
-        test_distract = intersect(testPredixtion, test_newInteractions, 'rows');
-        train_distract = intersect(train_prediction, train_newInteractions, 'rows');
-
+        
+        trainNewInteractionMat = zeros(nTargets, nDrugs);
+        testNewInteractionMat = zeros(nTargets, nDrugs);
+        trainNewInteractionMat(train_newInteractions) = 1;
+        testNewInteractionMat(test_newInteractions) = 1;
+      
+        [temp3, temp4] = vl_pr(trainNewInteractionMat, predictedInteractionMatrix);
+        [temp1, temp2] = vl_pr(testNewInteractionMat, predictedInteractionMatrixTest);
+        test_recall((featureNum-20)/20+1, 1) = mean(temp1) + test_recall((featureNum-20)/20+1, 1);
+        test_precision((featureNum-20)/20+1, 1) = mean(temp2) + test_precision((featureNum-20)/20+1, 1);
+        train_recall((featureNum-20)/20+1, 1) = train_recall((featureNum-20)/20+1, 1) + mean(temp3);
+        train_precision((featureNum-20)/20+1, 1) = train_precision((featureNum-20)/20+1, 1)+mean(temp4);
+        fprintf('current fold is  %d \n', currentFold);
+        fprintf('feature dimention is  %d \n', featureNum);
+        fprintf('test recall is %d \n', test_recall((featureNum-20)/20+1, 1)/currentFold);
+        fprintf('test precision is %d \n', test_precision((featureNum-20)/20+1, 1)/currentFold);
+        fprintf('train recall is %d \n', test_recall((featureNum-20)/20+1, 1)/currentFold);
+        fprintf('train precision is %d \n', test_precision((featureNum-20)/20+1, 1)/currentFold);
+        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         clear model1;clear train_Drug_Target_Interaction; clear xPosTrain; clear xNegTrain; clear drug; clear target;
         train_Drug_Target_Interaction = [cols, rows];
@@ -127,3 +145,7 @@ for currentFold = 1:num_folds,
     end
 end
 
+test_recall = test_recall/num_folds;
+test_precision = test_precision/num_folds;
+test_recall = test_recall/num_folds;
+test_precision = test_precision/num_folds;
