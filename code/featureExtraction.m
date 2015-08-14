@@ -4,7 +4,6 @@ function [scores] = featureExtraction(data, otherDomainData, k, row, count1, cou
 [rows, ~] = find(isnan(C) == 1);
 C(rows, :) = [];
 [labels, decisionvalue] = findScore(otherDomainData, C, row);
-% labels = ones(size(otherDomainData, 1)*size(C, 1), 1);
 global predictedInteractionMatrix;
 distinctCrulters = unique(IDX);
 kp = size(distinctCrulters, 1);
