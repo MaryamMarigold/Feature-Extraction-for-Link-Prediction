@@ -34,8 +34,6 @@ for currentFold = 1:num_folds,
     Interactions_Drug_Target_temp = [Interactions_Drug_Target;zeros(diffSize, 2)]; %intersection with the same size
     train_Drug_Target_Interaction = intersect(Interactions_Drug_Target_temp, ...
         PSLFolds(train_indexess, 1:2),'rows');%extracting train interactions for current fold
-    test_Drug_Target_Interaction = intersect(Interactions_Drug_Target_temp,...
-        PSLFolds(test_indexess, 1:2),'rows');%extracting test interactions for current fold
     %new interaction matrix for current fold:
     newInteractions = NewInteractionFolds(find(NewInteractionFolds(:, 3) == currentFold), 1:2);%new interactions of current fold
     diffSize2 = size(train, 1)-size(newInteractions, 1);
@@ -47,16 +45,15 @@ for currentFold = 1:num_folds,
     trainNewInteractionMat(sub2ind(size(trainNewInteractionMat),train_newInteractions(:, 2), train_newInteractions(:, 1))) = 1;
     testNewInteractionMat(sub2ind(size(testNewInteractionMat),test_newInteractions(:, 2), test_newInteractions(:, 1))) = 1;
     
-    xPosTrain = []; xPosTest = []; xNegTrain = []; xNegTest = [];
+    xPosTrain = []; xNegTrain = [];
     [rowZeroIdx, colZeroIdx] = find(Interactions_Matrix == 0);
     diffSize = size(train, 1)-size(rowZeroIdx, 1);
     zeroIndexes = [rowZeroIdx, colZeroIdx];
     zeroIndexes = [zeroIndexes;zeros(diffSize, 2)];
     train_zeroIndexes = intersect(zeroIndexes, PSLFolds(train_indexess, 1:2),'rows');%train nodes without interaction
-    test_zeroIndexes = intersect(zeroIndexes, PSLFolds(test_indexess, 1:2),'rows');%test nodes without interaction
     randomIndx = randperm(size(train_zeroIndexes, 1));
     ZeroIndexesTrain = train_zeroIndexes(randomIndx, :);
-    drug = []; target = [];drugTest = [];xPosTrain = [];xNegTrain = [];
+    drug=[]; target=[]; drugTest=[]; xPosTrain=[]; xNegTrain = [];
     clear Interactions_Drug_Target_temp; clear newInteractions_temp; clear newInteractions;clear zeroIndexes;
     %train and test X with interaction and without interaction:
     target =  [target_feature(1, :), target_feature(2, :), target_feature(3, :)];
@@ -74,14 +71,14 @@ for currentFold = 1:num_folds,
     clear ZeroIndexesTrain;clear randomIndx;
     for featureNum = 80:-20:20
         predictedInteractionMatrix = zeros(nTargets, nDrugs);%predicted interaction for train
-        xTrain = [xPosTrain, xNegTrain]';%train X
-        yTrain = [ones(size(xPosTrain,2), 1); repmat(-1,size(xNegTrain,2), 1)]; %train labels
-       [c, bestDegree] = cross_kfold(xTrain, yTrain, 5); %finding best degree and c parameter for polynomial kernel
+        trainSize =  min(size(xPosTrain, 2),size(xNegTrain, 2));
+        xTrain = [xPosTrain(:, 1:trainSize), xNegTrain(:, 1:trainSize)]';%train X
+        yTrain = [ones(trainSize, 1); repmat(-1,trainSize, 1)]; %train labels
+        [c, bestDegree] = cross_kfold(xTrain, yTrain, 5); %finding best degree and c parameter for polynomial kernel
         str = sprintfc('-t 0, -h 0, -d %d', bestDegree);
         str = strcat(str, ' ', sprintfc(', -c %d', c));
         model1 = svmtrain(yTrain, xTrain, str(1, 1)); 
-        drugFeature = featureExtraction(cell2mat(target)', cell2mat(drug)',...
-            featureNum, 0, nTargets, nDrugs);%calc new feature for drug
+        drugFeature = featureExtraction(cell2mat(target)', cell2mat(drug)', featureNum, 0, nTargets, nDrugs);%calc new feature for drug
         targetFeature = featureExtraction(cell2mat(drug)', cell2mat(target)',...
             featureNum, 1, nDrugs, nTargets);%calc new feature for target
         lastFeatureIndexTarget = lastFeatureIndexTarget+1;
@@ -106,28 +103,35 @@ for currentFold = 1:num_folds,
         disp('train recall is: ');disp(train_recall((featureNum-20)/20+1, 1));
         disp('train precision is: ');disp(train_precision((featureNum-20)/20+1, 1));
         
-        %clear all variables for better perdormance:
-        clear model1;clear train_Drug_Target_Interaction; clear xPosTrain; clear xNegTrain; clear drug; clear target; clear xTest; clear targetFeature; clear predictedInteractionMatrixTest;
-        clear trainNewInteractionMat; clear testNewInteractionMat;
+        %clear all variables for better performance:
+        clear train_Drug_Target_Interaction; clear xPosTrain; clear xNegTrain; clear drug; clear target; clear xTest; 
+        clear targetFeature; clear predictedInteractionMatrixTest;
         %calc all variables for next loop:
-        train_Drug_Target_Interaction = [cols, rows];
+        Drug_Target_Interaction = [cols, rows];
         clear rows; clear cols;
-        xPosTrain = cell2mat([target_feature(lastFeatureIndexTarget, train_Drug_Target_Interaction(:,2));...
-                               drug_feature(lastFeatureIndexDrug, train_Drug_Target_Interaction(:,1))]);
+        diffSize = size(train, 1)-size(Drug_Target_Interaction, 1);
+        Interactions_Drug_Target_temp = [Drug_Target_Interaction; zeros(diffSize, 2)]; %intersection with the same size
+        train_Drug_Target_Interaction = intersect(Interactions_Drug_Target_temp, ...
+            PSLFolds(train_indexess, 1:2),'rows');%extracting train interactions for current fold
+        xPosTrain = []; xNegTrain = [];
         [rowZeroIdx, colZeroIdx] = find(predictedInteractionMatrix == 0);%predicted interaction matrix as interaction matrix for the next loop
+        xPosTrain = cell2mat([target_feature(lastFeatureIndexTarget, train_Drug_Target_Interaction(:,2));...
+            drug_feature(lastFeatureIndexDrug, train_Drug_Target_Interaction(:,1))]);
         zeroIndexNum = min(size(rowZeroIdx, 1), size(xPosTrain, 2));
         diffSize = size(train_indexess, 1) - zeroIndexNum;
         ZeroIndexesTrain = [[rowZeroIdx(1:zeroIndexNum, 1), colZeroIdx(1:zeroIndexNum, 1)]; zeros(abs(diffSize), 2)];
         train_zeroIndexes = intersect(ZeroIndexesTrain(1:zeroIndexNum, :), PSLFolds(train_indexess, 1:2),'rows');
-        test_zeroIndexes = intersect(ZeroIndexesTrain(1:zeroIndexNum, :), PSLFolds(test_indexess, 1:2),'rows');
         randomIndx = randperm(size(train_zeroIndexes, 1));
         ZeroIndexesTrain = train_zeroIndexes(randomIndx, :);
-        xNegTrain = cell2mat([target_feature(lastFeatureIndexTarget, ZeroIndexesTrain(:,2));...
-                              drug_feature(lastFeatureIndexDrug, ZeroIndexesTrain(:,1))]);
         zeroIndexNum = min(size(ZeroIndexesTrain, 1), size(xPosTrain, 2));
         target = target_feature(lastFeatureIndexTarget, :);
         drug =  drug_feature(lastFeatureIndexDrug, :);
-        drugTest = {unique(cell2mat(drug_feature(lastFeatureIndexDrug, PSLFolds(test_indexess, 1))))};
+        drugTest = {cell2mat(drug_feature(lastFeatureIndexDrug, unique(PSLFolds(test_indexess, 1))))};
+        xNegTrain = cell2mat([target_feature(lastFeatureIndexTarget, ZeroIndexesTrain(1:zeroIndexNum,2));...
+            drug_feature(lastFeatureIndexDrug, ZeroIndexesTrain(1:zeroIndexNum,1))]);
+        if(size(xNegTrain, 1) == 0 || size(xPosTrain, 1) == 0)
+            break;
+        end
     end
 end
 
