@@ -18,7 +18,8 @@ if(row)
             if(~isempty(indexes))
                 indexes = rem(indexes, count1);
                 indexes(find(indexes == 0)) = count1;
-                predictedInteractionMatrix(iperim, indexes) = max(max(labels((i-1)*k+j,1), 0), predictedInteractionMatrix(iperim, indexes));
+                predictedInteractionMatrix(indexes, iperim) =max(max(labels((i-1)*k+j,1), 0),...
+                    predictedInteractionMatrix(indexes, iperim));
             end
         end
     end
@@ -33,7 +34,8 @@ else
             if(~isempty(indexes))
                 indexes = rem(indexes, count1);
                 indexes(find(indexes == 0)) = count1;
-                predictedInteractionMatrix(indexes, iperim) =max(max(labels((i-1)*k+j,1), 0), predictedInteractionMatrix(indexes, iperim));
+                predictedInteractionMatrix(iperim, indexes) = max(max(labels((i-1)*k+j,1), 0),...
+                    predictedInteractionMatrix(iperim, indexes));
             end
         end
     end
@@ -44,7 +46,7 @@ for i = 1: size(otherDomainData, 1)
         if(iperim == 0)
             iperim = count2;
         end
-    scores(iperim, :) = decisionvalue((i-1)*k+1:i*k, 1)';
+    scores(iperim,:) = decisionvalue((i-1)*k+1:i*k, 1)';
 end
 clear IDX; clear C; clear indexes; clear distinctCrulters; clear rows; clear labels; clear decisionvalueV; clear iperim;
 end
