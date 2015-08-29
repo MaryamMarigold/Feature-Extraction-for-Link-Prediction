@@ -22,9 +22,14 @@ nDrugs = 315; % No of drugs
 nTargets = 250; % No of targets
 num_folds = 10; % No of folds for cross validation
 indices =  PSLFolds(:,3); % Setting the folds to the same one used with PSL
+
 global predictedInteractionMatrix;
 global model1;
-train_recall = zeros(4, 1); train_precision = zeros(4, 1); test_recall = zeros(4, 1); test_precision = zeros(4, 1);
+train_recall = zeros(4, 1); train_precision = zeros(4, 1); test_recall = zeros(4, 1); test_precision = zeros(4, 1);foldsContain = zeros(4, 1);
+precXTrain = cell(4, 1); precYTrain = cell(4, 1); ROCTrain = zeros(4, 1); TTrain = zeros(4, 1);
+precTest = cell(4, 1); precTrain = cell(4, 1); recallTest = cell(4, 1); recallTrain = cell(4, 1);
+rmseTest = zeros(4, 1); maeTest = zeros(4, 1);
+rmseTrain = zeros(4, 1); maeTrain = zeros(4, 1);
 for currentFold = 1:num_folds,
     test = ((indices == currentFold) | (indices == -1)); %test nodes
     train = ~test;%train nodes
@@ -40,11 +45,13 @@ for currentFold = 1:num_folds,
     newInteractions_temp = [newInteractions;zeros(diffSize2, 2)]; %intersection with the same size
     train_newInteractions = intersect(newInteractions_temp, PSLFolds(train_indexess, 1:2),'rows');%train new interactions
     test_newInteractions = intersect(newInteractions_temp, PSLFolds(test_indexess, 1:2),'rows');%test new interactions
-    trainNewInteractionMat = zeros(nTargets, nDrugs); %train new interactions matrix
-    testNewInteractionMat = zeros(nTargets, nDrugs); %test new interactions matrix
-    trainNewInteractionMat(sub2ind(size(trainNewInteractionMat),train_newInteractions(:, 2), train_newInteractions(:, 1))) = 1;
-    testNewInteractionMat(sub2ind(size(testNewInteractionMat),test_newInteractions(:, 2), test_newInteractions(:, 1))) = 1;
     
+    trainNewInteractionMat = zeros(nDrugs, nTargets); %train new interactions matrix
+    testNewInteractionMat = zeros(nDrugs, nTargets); %test new interactions matrix
+    newInteractionsMatrix = zeros(nDrugs, nTargets);
+    trainNewInteractionMat((train_newInteractions(:, 2)-1)*(size(trainNewInteractionMat, 1))+train_newInteractions(:, 1)) = 1;
+    testNewInteractionMat((test_newInteractions(:, 2)-1)*(size(trainNewInteractionMat, 1))+test_newInteractions(:, 1)) = 1;
+    newInteractionsMatrix((newInteractions(:, 2)-1)*(size(newInteractionsMatrix, 1))+newInteractions(:,1)) = 1;
     xPosTrain = []; xNegTrain = [];
     [rowZeroIdx, colZeroIdx] = find(Interactions_Matrix == 0);
     diffSize = size(train, 1)-size(rowZeroIdx, 1);
@@ -55,11 +62,11 @@ for currentFold = 1:num_folds,
     ZeroIndexesTrain = train_zeroIndexes(randomIndx, :);
     drug=[]; target=[]; drugTest=[]; xPosTrain=[]; xNegTrain = [];
     clear Interactions_Drug_Target_temp; clear newInteractions_temp; clear newInteractions;clear zeroIndexes;
-    %train and test X with interaction and without interaction:
-    target =  [target_feature(1, :), target_feature(2, :), target_feature(3, :)];
+    %train and test X :
+    target =  [target_feature(1,:), target_feature(2,:), target_feature(3,:)];
+    drug = [];
     for i = 1:5
-        drug =  [drug, drug_feature(i, :)];
-        drugTest = [drugTest, drug_feature(i, unique(PSLFolds(test_indexess, 1)))];
+        drug = [drug, drug_feature(i, :)];
         for j = 1:3
             xPosTrain = [xPosTrain, cell2mat([target_feature(j, train_Drug_Target_Interaction(:,2));...
                 drug_feature(i, train_Drug_Target_Interaction(:,1))])];
@@ -69,44 +76,62 @@ for currentFold = 1:num_folds,
         end
     end
     clear ZeroIndexesTrain;clear randomIndx;
-    for featureNum = 80:-20:20
-        predictedInteractionMatrix = zeros(nTargets, nDrugs);%predicted interaction for train
+    for featureNum = 20:20:80
+        predictedInteractionMatrix = zeros(nDrugs, nTargets);%predicted interaction for train
         trainSize =  min(size(xPosTrain, 2),size(xNegTrain, 2));
         xTrain = [xPosTrain(:, 1:trainSize), xNegTrain(:, 1:trainSize)]';%train X
         yTrain = [ones(trainSize, 1); repmat(-1,trainSize, 1)]; %train labels
-        [c, bestDegree] = cross_kfold(xTrain, yTrain, 5); %finding best degree and c parameter for polynomial kernel
+   %     [c, bestDegree] = cross_kfold(xTrain, yTrain, 5); %finding best degree and c parameter for polynomial kernel
+        bestDegree = 6;
+        c = 0.01;
         str = sprintfc('-t 0, -h 0, -d %d', bestDegree);
         str = strcat(str, ' ', sprintfc(', -c %d', c));
-        model1 = svmtrain(yTrain, xTrain, str(1, 1)); 
+        model1 = svmtrain(yTrain, xTrain, str(1, 1));
         drugFeature = featureExtraction(cell2mat(target)', cell2mat(drug)', featureNum, 0, nTargets, nDrugs);%calc new feature for drug
-        targetFeature = featureExtraction(cell2mat(drug)', cell2mat(target)',...
-            featureNum, 1, nDrugs, nTargets);%calc new feature for target
+        targetFeature = featureExtraction(cell2mat(drug)', cell2mat(target)', featureNum, 1, nDrugs, nTargets);%calc new feature for target
         lastFeatureIndexTarget = lastFeatureIndexTarget+1;
         lastFeatureIndexDrug = lastFeatureIndexDrug+1;
         target_feature(lastFeatureIndexTarget, :) = num2cell(targetFeature', [1 size(targetFeature, 2)]);
-        drug_feature(lastFeatureIndexDrug, :) = num2cell(drugFeature', [1 size(drugFeature, 2)]);
-        [rows, cols] = find(predictedInteractionMatrix == 1);
-        %%%testing
-        predictedInteractionMatrixTest = testFeatureExtraction(cell2mat(drugTest)', cell2mat(target)',...
-            featureNum, nDrugs, nTargets); %test predicted interactions
-        [temp4, temp3] = calcPrecRecall(trainNewInteractionMat, predictedInteractionMatrix);%precision and recall for train
-        [temp2, temp1] = calcPrecRecall(testNewInteractionMat, predictedInteractionMatrixTest);%precision and recall for test
+        drug_feature(lastFeatureIndexDrug, :) = num2cell(drugFeature',  [1 size(drugFeature, 2)]);
+        
+        [temp2, temp1] = calcPrecRecall(PSLFolds(test_indexess, 1:2), testNewInteractionMat);%precision and recall for test
+        [temp4, temp3] = calcPrecRecall(PSLFolds(train_indexess, 1:2), trainNewInteractionMat);%precision and recall for train
+        
+        [temp5, temp6, ~, temp8] = perfcurve(reshape(newInteractionsMatrix, nDrugs*nTargets, 1)...
+            ,reshape(predictedInteractionMatrix, nDrugs*nTargets, 1), 1, 'xCrit', 'reca', 'yCrit', 'prec');
+
+        [temp9, temp10] = calcError(PSLFolds(test_indexess, 1:2), testNewInteractionMat);
+        [temp11, temp12] = calcError(PSLFolds(train_indexess, 1:2), trainNewInteractionMat);
+        
+        temp5(isnan(temp5)) = [];
+        temp6(isnan(temp6)) = [];
+        
+        precTest((featureNum-20)/20+1) = {[(precTest{(featureNum-20)/20+1}), temp2]};
+        precTrain((featureNum-20)/20+1) = {[(precTrain{(featureNum-20)/20+1}), temp4]}; 
+        recallTest((featureNum-20)/20+1) = {[(recallTest{(featureNum-20)/20+1}), temp1]}; 
+        recallTrain((featureNum-20)/20+1) = {[(recallTrain{(featureNum-20)/20+1}), temp3]};
+        rmseTest((featureNum-20)/20+1) = rmseTest((featureNum-20)/20+1)+ temp9; 
+        maeTest((featureNum-20)/20+1) = maeTest((featureNum-20)/20+1)+ temp10; 
+        rmseTrain((featureNum-20)/20+1) = rmseTrain((featureNum-20)/20+1)+ temp11; 
+        maeTrain((featureNum-20)/20+1) = maeTrain((featureNum-20)/20+1)+ temp12; 
+        
+        precXTrain((featureNum-20)/20+1) = {[(precXTrain{(featureNum-20)/20+1}), temp5']};
+        precYTrain((featureNum-20)/20+1) = {[(precYTrain{(featureNum-20)/20+1}), temp6']};
+        ROCTrain((featureNum-20)/20+1) = ROCTrain((featureNum-20)/20+1)+temp8;
+        foldsContain((featureNum-20)/20+1, 1) = foldsContain((featureNum-20)/20+1, 1)+1;
         %sum recall and precision for all folds with the same feature dim:
         test_recall((featureNum-20)/20+1, 1) = temp1 + test_recall((featureNum-20)/20+1, 1);
         test_precision((featureNum-20)/20+1, 1) = temp2 + test_precision((featureNum-20)/20+1, 1);
         train_recall((featureNum-20)/20+1, 1) = train_recall((featureNum-20)/20+1, 1) + temp3;
         train_precision((featureNum-20)/20+1, 1) = train_precision((featureNum-20)/20+1, 1)+temp4;
-        disp('current fold is : ');disp(currentFold);
-        disp('feature dimention is: ');disp( featureNum);
-        disp('test recall is: ');disp(test_recall((featureNum-20)/20+1, 1));
-        disp('test precision is: ');disp(test_precision((featureNum-20)/20+1, 1));
-        disp('train recall is: ');disp(train_recall((featureNum-20)/20+1, 1));
-        disp('train precision is: ');disp(train_precision((featureNum-20)/20+1, 1));
         
         %clear all variables for better performance:
-        clear train_Drug_Target_Interaction; clear xPosTrain; clear xNegTrain; clear drug; clear target; clear xTest; 
+        clear train_Drug_Target_Interaction; clear xPosTrain; clear xNegTrain; clear drug; clear target; clear xTest;
         clear targetFeature; clear predictedInteractionMatrixTest;
+        clear drugFeature; clear targetFeature;
+        
         %calc all variables for next loop:
+        [rows, cols] = find(predictedInteractionMatrix == 1);
         Drug_Target_Interaction = [cols, rows];
         clear rows; clear cols;
         diffSize = size(train, 1)-size(Drug_Target_Interaction, 1);
@@ -126,7 +151,6 @@ for currentFold = 1:num_folds,
         zeroIndexNum = min(size(ZeroIndexesTrain, 1), size(xPosTrain, 2));
         target = target_feature(lastFeatureIndexTarget, :);
         drug =  drug_feature(lastFeatureIndexDrug, :);
-        drugTest = {cell2mat(drug_feature(lastFeatureIndexDrug, unique(PSLFolds(test_indexess, 1))))};
         xNegTrain = cell2mat([target_feature(lastFeatureIndexTarget, ZeroIndexesTrain(1:zeroIndexNum,2));...
             drug_feature(lastFeatureIndexDrug, ZeroIndexesTrain(1:zeroIndexNum,1))]);
         if(size(xNegTrain, 1) == 0 || size(xPosTrain, 1) == 0)
@@ -134,8 +158,3 @@ for currentFold = 1:num_folds,
         end
     end
 end
-
-test_recall = test_recall/num_folds;
-test_precision = test_precision/num_folds;
-test_recall = test_recall/num_folds;
-test_precision = test_precision/num_folds;
